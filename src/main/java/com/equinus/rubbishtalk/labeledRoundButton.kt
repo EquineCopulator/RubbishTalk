@@ -1,0 +1,60 @@
+package com.equinus.rubbishtalk
+
+import android.widget.*
+import android.util.TypedValue
+
+class LabeledRoundButton(context:android.content.Context, attr:android.util.AttributeSet?) : RelativeLayout(context, attr) {
+    constructor(context:android.content.Context) : this(context, null) {
+        val diameter = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 100f, context.resources.displayMetrics).toInt()
+        layoutParams = MarginLayoutParams(diameter, diameter).apply {
+            marginEnd = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 20f, context.resources.displayMetrics).toInt()
+        }
+    }
+
+    var color:Int
+        get() { return 0 }
+        set(value) { iv.colorFilter = ToFilter(value) }
+    var text:CharSequence
+        get() { return tv.text }
+        set(value) {
+            tv.text = value
+            val count = text.count { c:Char->c.isLetterOrDigit() }
+            tv.textSize = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, if (count < 4) 25f else 80f / count, context.resources.displayMetrics)
+        }
+    fun setCircleOnClickListener(r:(android.view.View)->Unit) {
+        iv.setOnClickListener(r)
+    }
+    var textSize get() = tv.textSize
+        set(value) { tv.textSize = value }
+
+    @android.annotation.SuppressLint("UseCompatLoadingForDrawables")
+    private val iv = ImageView(context).apply {
+        val color = attr?.getAttributeUnsignedIntValue("android", "color", -1) ?: -1
+        colorFilter = ToFilter(color)
+        setImageDrawable(if (android.os.Build.VERSION.SDK_INT >= 21)
+            context.resources.getDrawable(R.drawable.draw_redcirclebutton, null)
+        else @Suppress("DEPRECATION") context.resources.getDrawable(R.drawable.draw_redcirclebutton))
+        layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT)
+    }
+    private val tv = TextView(context).apply{
+        text = attr?.getAttributeValue("android", "text") ?: ""
+        val count = text.count { c:Char->c.isLetterOrDigit() }
+        textSize = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, if (count < 4) 25f else 80f / count, context.resources.displayMetrics)
+        gravity = android.view.Gravity.CENTER
+        typeface = android.graphics.Typeface.defaultFromStyle(android.graphics.Typeface.ITALIC)
+        setTextColor(0xFF000000U.toInt())
+        layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT)
+    }
+    init {
+        addView(iv)
+        addView(tv)
+    }
+
+    private fun ToFilter(color:Int):android.graphics.ColorMatrixColorFilter {
+        return android.graphics.ColorMatrixColorFilter(floatArrayOf(
+            (color ushr 16 and 0xFF).toFloat() / 0xFF, 0f, 0f, 0f, 0f,
+            0f, (color ushr 8 and 0xFF).toFloat() / 0xFF, 0f, 0f, 0f,
+            0f, 0f, (color and 0xFF).toFloat() / 0xFF, 0F, 0F,
+            0f, 0f, 0f, (color ushr 24 and 0xFF).toFloat() / 0xFF, 0f))
+    }
+}
