@@ -26,6 +26,9 @@ class MainActivity_Media(private val that:MainActivity) {
     
     val random = java.util.Random()
 
+    fun pause() { audios.pause() }
+    fun resume() { audios.resume() }
+
     private val lines = MainActivity_Lines(that, this)
     private val images = MainActivity_Images(that, this)
     private val audios = MainActivity_Audios(that, this)

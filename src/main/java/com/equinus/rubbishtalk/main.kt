@@ -304,7 +304,6 @@ class MainActivity : Activity() {
         l_game.llMain.addView(b_create)
 
         alert_option = AlertDialog.Builder(this).apply {
-
             setTitle(getString(R.string.tv_game_setting))
             setView(l_option.root)
             setPositiveButton(getString(R.string.ok)) { _, _ ->
@@ -447,5 +446,15 @@ class MainActivity : Activity() {
     override fun onPostCreate(savedInstanceState: Bundle?) {
         super.onPostCreate(savedInstanceState)
         InitGameMenu()
+    }
+
+    override fun onPause() {
+        if (media.topic != topic_uninitialized) media.pause()
+        super.onPause()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        if (media.topic != topic_uninitialized) media.resume()
     }
 }

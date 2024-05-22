@@ -145,6 +145,13 @@ class MainActivity_Images(that:MainActivity, parent:MainActivity_Media): MainAct
 }
 
 class MainActivity_Audios(that:MainActivity, parent:MainActivity_Media): MainActivity_Nonlines(that, parent) {
+    fun pause() {
+        try { player.pause() } catch (_:IllegalStateException) {}
+    }
+    fun resume() {
+        try { player.start() } catch (_:IllegalStateException) {}
+    }
+
     override val accepted_extensions = MainActivity.accepted_audio_extension
     override fun DisplayMedia() {
         player.reset()
@@ -153,6 +160,23 @@ class MainActivity_Audios(that:MainActivity, parent:MainActivity_Media): MainAct
 
             meta.setDataSource(files_topic[pos_i_series][pos_i_img].absolutePath)
             isVideo = meta.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_HAS_VIDEO) != null
+            if (isVideo) {
+                val width = meta.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH)?.toIntOrNull()
+                if (width != null) {
+                    val height = meta.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT)?.toIntOrNull()
+                    if (height != null) {
+                        val asw = width * that.l_main.viewMain.height / height
+                        if (asw <= that.l_main.viewMain.width) {
+                            that.l_main.viewMainVideo.layoutParams.width = asw
+                            that.l_main.viewMainVideo.layoutParams.height = android.view.ViewGroup.LayoutParams.MATCH_PARENT
+                        }
+                        else {
+                            that.l_main.viewMainVideo.layoutParams.width = android.view.ViewGroup.LayoutParams.MATCH_PARENT
+                            that.l_main.viewMainVideo.layoutParams.height = height * that.l_main.viewMain.width / width
+                        }
+                    }
+                }
+            }
 
             player.prepareAsync()
         }
