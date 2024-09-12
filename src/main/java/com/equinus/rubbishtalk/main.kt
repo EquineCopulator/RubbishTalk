@@ -18,6 +18,7 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.equinus.rubbishtalk.databinding.*
 import java.io.File
+import kotlin.math.min
 
 class MainActivity : Activity() {
     companion object {
@@ -423,6 +424,18 @@ class MainActivity : Activity() {
         l_main.llOptionHelp.setOnClickListener(::OnClickUpper)
         l_main.buttonOption.setOnClickListener(::OnClickOption)
         l_main.buttonHelp.setOnClickListener(::OnClickHelp)
+
+        val pivot = if (android.os.Build.VERSION.SDK_INT >= 30) {
+            val bounds = windowManager.currentWindowMetrics.bounds
+            min(bounds.width(), bounds.height())
+        }
+        else {
+            val m = android.util.DisplayMetrics()
+            @Suppress("DEPRECATION") windowManager.defaultDisplay.getMetrics(m)
+            min(m.widthPixels, m.heightPixels)
+        }.toFloat() / 2
+        l_main.relaMain.pivotX = pivot
+        l_main.relaMain.pivotY = pivot
 
         getPreferences(Context.MODE_PRIVATE)?.also {
             if (!it.contains(prefkey_welcome)) {

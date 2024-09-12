@@ -13,7 +13,6 @@ android {
         versionName '0.4.1.5'
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         versionNameSuffix = 'beta'
-        resConfigs "en", "zh"
     }
     buildTypes {
         release {

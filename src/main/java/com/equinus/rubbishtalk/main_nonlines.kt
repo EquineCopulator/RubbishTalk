@@ -107,29 +107,28 @@ class MainActivity_Images(that:MainActivity, parent:MainActivity_Media): MainAct
         android.graphics.BitmapFactory.decodeFile(path, op_b)
         if (op_b.outWidth == -1) return
 
-        val hz = op_b.outWidth > op_b.outHeight
-        if (hz) {
+        if (op_b.outWidth > op_b.outHeight) {
             var q = 2
             while (op_b.outWidth >= that.l_main.viewMain.width * q && op_b.outHeight >= that.l_main.viewMain.height * q)
                 q *= 2
             op_s.inSampleSize = q / 2
-        }
-        else {
+
+            that.l_main.viewMain.setImageBitmap(android.graphics.BitmapFactory.decodeFile(path, op_s) ?: return)
+
+            that.l_main.relaMain.animate().setDuration(500).rotation(0f)
+        } else {
             var q = 2
             while (op_b.outWidth >= that.l_main.viewMain.height * q && op_b.outHeight >= that.l_main.viewMain.width * q)
                 q *= 2
             op_s.inSampleSize = q / 2
-        }
 
-        val bitmap = android.graphics.BitmapFactory.decodeFile(path, op_s)
-        if (bitmap == null) return
-        else {
-            if (hz) that.l_main.viewMain.setImageBitmap(bitmap)
-            else {
-                val m = android.graphics.Matrix()
-                m.postRotate(-90f)
-                that.l_main.viewMain.setImageBitmap(android.graphics.Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, m, true))
-            }
+            val bitmap = android.graphics.BitmapFactory.decodeFile(path, op_s) ?: return
+            val m = android.graphics.Matrix()
+            m.postRotate(-90f)
+            that.l_main.viewMain
+                .setImageBitmap(android.graphics.Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, m, true))
+
+            that.l_main.relaMain.animate().setDuration(500).rotation(-90f)
         }
     }
     override fun RemoveMedia() {
