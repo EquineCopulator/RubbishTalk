@@ -11,6 +11,8 @@ import android.content.pm.PackageManager.PERMISSION_DENIED
 import android.os.Bundle
 import android.os.Environment
 import android.os.Handler
+import android.view.GestureDetector
+import android.view.MotionEvent
 import android.view.View
 import android.widget.Button
 import android.widget.LinearLayout
@@ -57,6 +59,9 @@ class MainActivity : Activity() {
     lateinit var l_main : MainBinding
     private lateinit var l_option : OptionBinding
     private lateinit var alert_option : AlertDialog
+
+    private lateinit var gesture:androidx.core.view.GestureDetectorCompat
+    private var flingCooldown = false
 
     lateinit var handler_delay:Handler
         private set
@@ -144,9 +149,7 @@ class MainActivity : Activity() {
         if (grantResults.getOrNull(0) == PERMISSION_GRANTED) {
             if (requestCode != -1) procedures_requiring_permissions[requestCode]()
         }
-        else {
-            Alert(getString(R.string.merr_permission_denied, permissions[0]))
-        }
+        else Alert(getString(R.string.merr_permission_denied, permissions[0]))
     }
 
     private val runnable_HideButtonsUpper = Runnable {
@@ -187,32 +190,29 @@ class MainActivity : Activity() {
         Alert(getString(R.string.article_help))
     }
 
-    override fun onActivityResult(requestCode:Int, resultCode:Int, data:Intent) {
+    override fun onActivityResult(requestCode:Int, resultCode:Int, data:Intent?) {
         when (requestCode) {
             1 -> {
                 if (resultCode == RESULT_CANCELED) return
-                val path = data.data?.path
-                if (path != null) {
-                    val s = "${Environment.getExternalStorageDirectory().absolutePath}${File.separator}${path.substringAfter(':')}"
-                    l_option.etDir.setText(s)
-                }
+                val path = data?.data?.path ?: return
+                val s = "${Environment.getExternalStorageDirectory().absolutePath}${File.separator}${path.substringAfter(':')}"
+                l_option.etDir.setText(s)
             }
         }
     }
 
     private fun TryInitMedia() {
-        File(media.dir_media).also {
-            if (it.exists()) {
-                if (it.canRead()) media.Init()
-                else RequestStoragePermission(procedures_requiring_permissions.indexOf(::TryInitMedia))
-            }
-            else onInitMediaResult(false)
+        val f = File(media.dir_media)
+        if (f.exists()) {
+            if (f.canRead()) media.Init()
+            else RequestStoragePermission(procedures_requiring_permissions.indexOf(::TryInitMedia))
         }
+        else onInitMediaResult(false)
     }
 
     fun onInitMediaResult(success: Boolean) {
         if (success) {
-            l_main.tvNooutput.visibility = View.INVISIBLE
+            l_main.tvNooutput.visibility = View.GONE
             runnable_HideButtonsUpper.run()
         }
         else {
@@ -403,12 +403,13 @@ class MainActivity : Activity() {
             setNegativeButton(getString(R.string.cancel)) { _, _ -> }
         }.create()
 
-        l_main.relaMain.setOnTouchListener(swipeListener({ _, p1, x_src, _ ->
+        /*l_main.relaMain.setOnTouchListener(swipeListener({ _, p1, x_src, _ ->
             p1.x !in x_src - 100f .. x_src + 100f
         }) { _, _, _, _ ->
             media.ChangeImage()
             true
-        })
+        })*/
+
         setContentView(l_game.root)
     }
 
@@ -454,6 +455,27 @@ class MainActivity : Activity() {
                 }
             }
         }
+
+        gesture = androidx.core.view.GestureDetectorCompat(this, object:GestureDetector.SimpleOnGestureListener() {
+            override fun onFling(e1: MotionEvent, e2: MotionEvent, velocityX: Float, velocityY: Float ) =
+                if (e2.x - e1.x < -100) {
+                    if (!flingCooldown) {
+                        flingCooldown = true
+                        media.ChangeImage()
+                        handler_delay.postDelayed({ flingCooldown = false }, 100L)
+                    }
+                    true
+                }
+                else if (e2.x - e1.x > 100) {
+                    if (!flingCooldown) {
+                        flingCooldown = true
+                        media.ChangeImagePrev()
+                        handler_delay.postDelayed({ flingCooldown = false }, 100L)
+                    }
+                    true
+                }
+                else super.onFling(e1, e2, velocityX, velocityY)
+        })
     }
 
     override fun onPostCreate(savedInstanceState: Bundle?) {
@@ -470,4 +492,7 @@ class MainActivity : Activity() {
         super.onResume()
         if (media.topic != topic_uninitialized) media.resume()
     }
+
+    override fun onTouchEvent(event: MotionEvent) =
+        gesture.onTouchEvent(event) || super.onTouchEvent(event)
 }

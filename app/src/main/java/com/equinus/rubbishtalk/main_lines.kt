@@ -7,6 +7,26 @@ import android.view.animation.AlphaAnimation
 import java.io.File
 
 class MainActivity_Lines(private val that:MainActivity, private val parent:MainActivity_Media) {
+    fun Init() {
+        val f = File(parent.dir_media, "script.txt")
+        if (f.canRead()) {
+            val parent_height = that.l_main.viewMain.height
+            fontsize = if (parent_height > 0) (parent_height / 32).toFloat() else 30f
+
+            time_start = System.currentTimeMillis()
+
+            executor.execute {
+                topic = ""
+                LoadScript(f)
+                val success = lines_main.isNotEmpty()
+                that.handler_delay.post { parent.onScriptResult(success) }
+                todo_jump = 0
+                PrepareNextLine(2000L)
+            }
+        }
+        else parent.onScriptResult(false)
+    }
+
     private var lines_main = listOf("")
     private val lines_passages = mutableMapOf<String, List<String>>()
     private val label_positions = mutableMapOf<String, MutableMap<String, Int>>()
@@ -199,7 +219,6 @@ class MainActivity_Lines(private val that:MainActivity, private val parent:MainA
                         is CScriptVirtualMachine.UndefinedName -> that.getString(R.string.merr_badscript_name)
                         is CScriptVirtualMachine.AssignToRvalue -> that.getString(R.string.merr_badscript_rvalue)
                         is CScriptVirtualMachine.TypeError -> that.getString(R.string.merr_badscript_type, e.s_value, e.s_type)
-                        else -> ""
                     },
                     if (e.message?.isNotBlank() == true) ": ${e.message}" else ".",
                     line,
@@ -375,12 +394,16 @@ class MainActivity_Lines(private val that:MainActivity, private val parent:MainA
                 frequency_metronome = todonow_metronome
                 that.handler_delay.post{ parent.SetMetronome(todonow_metronome) }
             }
+
             val todonow_ask = todo_ask
             if (todonow_ask != null) that.handler_delay.post(todonow_ask)
+
             val todonow_react = todo_react
             if (todonow_react != null) that.handler_delay.post(todonow_react)
+
             val todonow_media = todo_media
             if (todonow_media != null) that.handler_delay.post(todonow_media)
+
             if (todo_jump in passage.indices)
                 i_lines = todo_jump
             else NextLine()
@@ -483,25 +506,5 @@ class MainActivity_Lines(private val that:MainActivity, private val parent:MainA
             todo_jump = 0
             PrepareNextLine(0L)
         }
-    }
-
-    fun Init() {
-        val f = File(parent.dir_media, "script.txt")
-        if (f.canRead()) {
-            val parent_height = that.l_main.viewMain.height
-            fontsize = if (parent_height > 0) (parent_height / 32).toFloat() else 30f
-
-            time_start = System.currentTimeMillis()
-
-            executor.execute {
-                topic = ""
-                LoadScript(f)
-                val success = lines_main.isNotEmpty()
-                that.handler_delay.post { parent.onScriptResult(success) }
-                todo_jump = 0
-                PrepareNextLine(2000L)
-            }
-        }
-        else parent.onScriptResult(false)
     }
 }

@@ -58,7 +58,7 @@ class CScriptVirtualMachine {
         private val right = mapOf("++" to true, "--" to true, ")" to true, ">" to true, "]" to true)
     }
 
-    abstract class BadScriptException(s:String):Exception(s)
+    sealed class BadScriptException(s:String):Exception(s)
     class InvalidSyntax(s:String):BadScriptException(s)
     class UnbalancedBracket(s:String):BadScriptException(s)
     class UndefinedName(s:String):BadScriptException(s)
@@ -70,9 +70,8 @@ class CScriptVirtualMachine {
 
     private inline fun<reified T> CValue(v:Any):T {
         val vv = v as? Pair<*, *>
-        return if (vv != null) {
+        return if (vv != null)
             (vv.first ?: throw UndefinedName(vv.second as String)) as? T ?: throw TypeError(vv.second.toString(), T::class.toString())
-        }
         else v as? T ?: throw TypeError(v.toString(), T::class.toString())
     }
     private fun CAddress(v:Any):String {

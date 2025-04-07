@@ -3,7 +3,7 @@ package com.equinus.rubbishtalk
 import java.io.*
 
 class MainActivity_Media(private val that:MainActivity) {
-    var dir_media = android.os.Environment.getExternalStorageDirectory().absolutePath + File.separator + "Rubbish Talk"
+    var dir_media = "${android.os.Environment.getExternalStorageDirectory().absolutePath}${File.separator}Rubbish Talk"
     var text_speed
         get() = lines.text_speed
         set(value) { lines.text_speed = value }
@@ -77,6 +77,10 @@ class MainActivity_Media(private val that:MainActivity) {
 
     fun ChangeImage() {
         images.NextMedia()
+    }
+
+    fun ChangeImagePrev() {
+        images.PrevMedia()
     }
 
     fun onScriptResult(success:Boolean) {

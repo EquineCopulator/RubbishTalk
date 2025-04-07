@@ -2,14 +2,14 @@ package com.equinus.rubbishtalk
 
 import java.io.File
 
-abstract class MainActivity_Nonlines(protected val that:MainActivity, private val parent:MainActivity_Media) {
+sealed class MainActivity_Nonlines(protected val that:MainActivity, private val parent:MainActivity_Media) {
     protected abstract val accepted_extensions:Array<String>
     protected abstract fun DisplayMedia()
     protected abstract fun RemoveMedia()
     protected open fun DecideNextImage() {}
 
     companion object {
-        private val files_topic_dummy = mutableListOf<MutableList<File>>()
+        private val files_topic_dummy = emptyList<List<File>>()
     }
 
     var topic = MainActivity.topic_uninitialized
@@ -22,7 +22,8 @@ abstract class MainActivity_Nonlines(protected val that:MainActivity, private va
                     files_topic = files_topic_new
                     pos_i_series = parent.random.nextInt(files_topic_new.size)
                     pos_i_img = 0
-                    ChooseMedia()
+                    DisplayMedia()
+                    DecideNextImage()
                 }
                 else {
                     field = MainActivity.topic_uninitialized
@@ -40,7 +41,6 @@ abstract class MainActivity_Nonlines(protected val that:MainActivity, private va
     private val mr = MemorizedRandom(parent.random)
 
     private fun ChooseMedia() {
-        DisplayMedia()
         ++pos_i_img
         if (pos_i_img >= files_topic[pos_i_series].size) {
             if (files_topic.size > 1) {
@@ -48,6 +48,7 @@ abstract class MainActivity_Nonlines(protected val that:MainActivity, private va
             }
             pos_i_img = 0
         }
+        DisplayMedia()
         DecideNextImage()
     }
     protected val runnable_ChooseMedia = Runnable(::ChooseMedia)
@@ -55,7 +56,23 @@ abstract class MainActivity_Nonlines(protected val that:MainActivity, private va
     fun NextMedia() {
         if (files_topic !== files_topic_dummy) {
             that.handler_delay.removeCallbacks(runnable_ChooseMedia)
-            runnable_ChooseMedia.run()
+            ChooseMedia()
+        }
+    }
+
+    fun PrevMedia() {
+        if (files_topic !== files_topic_dummy) {
+            that.handler_delay.removeCallbacks(runnable_ChooseMedia)
+
+            --pos_i_img
+            if (pos_i_img < 0) {
+                if (files_topic.size > 1) {
+                    pos_i_series = mr.Next(topic, files_topic.size)
+                }
+                pos_i_img = files_topic[pos_i_series].size - 1
+            }
+            DisplayMedia()
+            DecideNextImage()
         }
     }
 

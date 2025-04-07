@@ -1,0 +1,42 @@
+plugins {
+	alias libs.plugins.gradle
+	alias libs.plugins.kotlin
+}
+
+android {
+    namespace "com.equinus.rubbishtalk"
+    defaultConfig {
+		compileSdk 33
+        applicationId "com.equinus.rubbishtalk"
+        minSdkVersion 19
+        targetSdkVersion 35
+        versionCode 1
+        versionName '0.4.1.6'
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        versionNameSuffix = 'beta'
+    }
+    buildTypes {
+        release {
+            minifyEnabled true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt')
+        }
+    }
+    kotlinOptions {
+        jvmTarget = "1.8"
+    }
+    buildFeatures {
+        viewBinding true
+    }
+}
+
+dependencies {
+    implementation libs.kotlin.stdlib
+    implementation libs.androidx.core
+    //implementation 'androidx.appcompat:appcompat:1.6.1'
+    //implementation 'androidx.legacy:legacy-support-v4:1.0.0'
+    //implementation fileTree(dir: 'libs', include: ['*.jar'])
+    //implementation files('../../CubismSdkForJava-4-r.1/Core/android/Live2DCubismCore.aar')
+    testImplementation libs.junit
+    androidTestImplementation libs.test.runner
+    androidTestImplementation libs.test.espresso
+}
