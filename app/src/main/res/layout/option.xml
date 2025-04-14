@@ -4,7 +4,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context=".MainActivity">
+    tools:context=".ActivityGame">
     <LinearLayout
         android:orientation="vertical"
         android:layout_width="match_parent"
@@ -33,12 +33,12 @@
                 android:text="@string/tv_option_dir"
                 android:textColor="#FF000000"/>
             <TextView
+                android:id="@+id/b_option_browse"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="@string/tv_option_dir_browse"
                 android:textAlignment="textEnd"
                 android:textSize="20sp"
-                android:onClick="OnClickOptionBrowse"
                 android:textColor="#FF0000E0"/>
         </LinearLayout>
         <EditText

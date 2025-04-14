@@ -1,5 +1,6 @@
 <resources>
     <string name="cancel">取消</string>
+    <string name="delete">删除</string>
     <string name="got">知道了</string>
     <string name="nogot">下次再提醒</string>
     <string name="reqper">请求权限</string>
@@ -20,15 +21,14 @@
     <string name="merr_gamename_existing">重复的游戏名称：%1$s</string>
     <string name="merr_gamename_invalid">无效的游戏名称：%1$s</string>
     <string name="merr_permission_denied">用户手动拒绝了权限%1$s。应用无法继续运行，请重启应用。</string>
+    <string name="merr_nonexist">媒体文件路径不存在：%1$s</string>
     <string name="merr_storagefailed">无法读取文件，原因未知。</string>
     <string name="merr_nopermission_read">本应用需要读取存储权限（READ_EXTERNAL_STORAGE）来显示媒体文件，你可以手动授予权限或让本应用申请权限。</string>
     <string name="merr_nopermission_write">本应用需要写入存储权限（READ_EXTERNAL_STORAGE）来保存运行数据，你可以手动授予权限或让本应用申请权限。</string>
     <string name="merr_nopermission_manage">你的设备运行的是安卓11或更高版本，需要管理存储权限（MANAGE_EXTERNAL_STORAGE）来访问设备上的文件，你可以手动授予权限或让本应用申请权限。</string>
-    <string name="merr_nomedia">没有找收媒体文件。\n你可以打开右上角选项菜单，指定一个新的媒体文件路径，或者向现有路径添加媒体文件，然后重启应用。</string>
+    <string name="merr_nomedia">没有找到媒体文件。\n你可以长按游戏按钮，指定一个新的媒体文件路径，或者向现有路径添加媒体文件，然后再次开始游戏。</string>
     <string name="merr_fileaccess">无法读取文件%1$s，访问被拒绝。</string>
-    <string name="merr_sessionend">本次游戏已结束。</string>
     <string name="merr_badpath">指定的媒体文件路径无法访问。</string>
-    <string name="merr_pathchanged">媒体文件路径已更改，将在重启后生效。</string>
     <string name="merr_badimg">不支持的图片格式：%1$s</string>
     <string name="merr_badmemory">脚本存储数据损坏。</string>
     <string name="merr_badscript">%1$s%2$s\n\t 位于 行 %3$d 文件 %4$s。</string>
@@ -48,6 +48,6 @@
     <string name="article_welcome">
         "感谢使用Rubbish Talk，作者Equinus。本应用根据用户指定的脚本和媒体路径和脚本展示一些随机图片和文字。
         运行本应用需授予存储权限，并将媒体文件（图片、音频、视频或脚本文档）放入指定的路径中。
-        点击屏幕右上角可以打开设置和帮助。"
+        点击屏幕右上角可以打开帮助。"
     </string>
 </resources>

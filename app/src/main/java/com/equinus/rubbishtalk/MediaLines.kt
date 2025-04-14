@@ -4,28 +4,45 @@ import android.os.SystemClock.uptimeMillis
 import android.view.View
 import android.view.ViewGroup
 import android.view.animation.AlphaAnimation
+import androidx.annotation.UiThread
+import androidx.annotation.WorkerThread
 import java.io.File
 
-class MainActivity_Lines(private val that:MainActivity, private val parent:MainActivity_Media) {
-    fun Init() {
-        val f = File(parent.dir_media, "script.txt")
-        if (f.canRead()) {
-            val parent_height = that.l_main.viewMain.height
-            fontsize = if (parent_height > 0) (parent_height / 32).toFloat() else 30f
-
-            time_start = System.currentTimeMillis()
-
-            executor.execute {
-                topic = ""
-                LoadScript(f)
-                val success = lines_main.isNotEmpty()
-                that.handler_delay.post { parent.onScriptResult(success) }
-                todo_jump = 0
-                PrepareNextLine(2000L)
-            }
+class MediaLines(
+    private val width:Int,
+    height:Int,
+    private val handler:android.os.Handler,
+    private val exit:(String?)->Unit,
+    private val images:MediaImages,
+    private val audios:MediaAudios,
+    private val dirMedia:String,
+    private val textSpeed:Long,
+    private val context:android.content.Context,
+    private val random:kotlin.random.Random,
+    private val vText:ViewGroup,
+    private val vQuestion:ViewGroup,
+    private val vResponse:ViewGroup)
+{
+    @UiThread fun init():Boolean {
+        val f = File(dirMedia, "script.txt")
+        return if (f.canRead()) {
+            topic = ""
+            loadScript(f)
+            lines_main.isNotEmpty()
         }
-        else parent.onScriptResult(false)
+        else false
     }
+
+    @UiThread fun start() {
+        time_start = System.currentTimeMillis()
+        executor.execute {
+            todo_jump = 0
+            prepareNextLine(2000L)
+        }
+    }
+    @UiThread fun stop() { stopped = true }
+    @UiThread fun pause() { paused = true }
+    @UiThread fun resume() { paused = false }
 
     private var lines_main = listOf("")
     private val lines_passages = mutableMapOf<String, List<String>>()
@@ -33,16 +50,17 @@ class MainActivity_Lines(private val that:MainActivity, private val parent:MainA
     private val callback_token = Object()
     private val executor = java.util.concurrent.Executors.newSingleThreadScheduledExecutor()
     //private val executor = object { fun execute(r:Runnable) { r.run() } }
-    var text_speed = 333L
+    @Volatile private var paused = false
+    @Volatile private var stopped = false
 
-    private var fontsize = 30f
-    private var topic = MainActivity.topic_uninitialized
+    private val fontsize = if (height > 0) (height / 32).toFloat() else 30f
+    private var topic = SharedConst.TOPIC_UNINITED
     private var passage = lines_main
     private var passage_name = ""
 
     private var i_lines = -1
     private var i_lines_return = -1
-    private val mr = MemorizedRandom(parent.random)
+    private val mr = MemorizedRandom(random)
 
     private var time_start = 0L
     private var frequency_metronome = 0
@@ -53,157 +71,208 @@ class MainActivity_Lines(private val that:MainActivity, private val parent:MainA
     private var todo_react:Runnable? = null
     private var todo_media:Runnable? = null
 
-    private val cm = CScriptVirtualMachine().apply {
+    private val cm = CScriptVirtualMachine()
+    init {
         //int exit()
-        func["exit"] = {
-            that.handler_delay.removeCallbacksAndMessages(callback_token)
-            that.handler_delay.post(parent::Exit)
+        cm.func["exit"] = {
+            handler.removeCallbacksAndMessages(callback_token)
+            handler.post{ exit(null) }
             passage = listOf()
             0
         }
         //int jmp(int jump_offset)
-        func["jmp"] = {
+        cm.func["jmp"] = {
             todo_jump = i_lines + it[0] as Int
             todo_jump
         }
         //int jmpto(int jump_to_line)
-        func["jmpto"] = {
+        cm.func["jmpto"] = {
             val todo_jump_original = todo_jump
             todo_jump = it[0] as Int
             todo_jump_original
         }
         //int lb(string label_name)
-        func["lb"] = {
+        cm.func["lb"] = {
             label_positions[passage_name]?.get(it[0] as String) ?: -1
         }
         //int lb(string passage_name, string label_name)
-        func["lbp"] = {
+        cm.func["lbp"] = {
             label_positions[it[0] as String]?.get(it[1] as String) ?: -1
         }
         //int lb(int upper_limit)
-        func["random"] = {
+        cm.func["random"] = {
             val max = it[0] as Int
             if (max <= 0) -1
-            else parent.random.nextInt(max)
+            else random.nextInt(max)
         }
         //int time()
-        func["time"] = {
+        cm.func["time"] = {
             (System.currentTimeMillis() - time_start).toInt()
         }
         //int timeunix(int right_shift_bits)
-        func["timeunix"] = {
+        cm.func["timeunix"] = {
             (System.currentTimeMillis() ushr Int.SIZE_BITS * it[0] as Int).toInt()
         }
         //int retpos()
-        func["retpos"] = {
+        cm.func["retpos"] = {
             i_lines_return
         }
         //int wait(int wait_time)
-        func["wait"] = {
+        cm.func["wait"] = {
             val todo_wait_original = todo_wait
             todo_wait += it[0] as Int
             todo_wait_original
         }
         //int metronome(int interval)
-        func["metronome"] = {
+        cm.func["metronome"] = {
             todo_metronome = it[0] as Int
             frequency_metronome
         }
         //string media(int type, string topic)
-        func["media"] = {
+        cm.func["media"] = {
             val topic_new = it[1] as String
             when(it[0] as? Int) {
                 1 -> {
-                    todo_media = Runnable{ parent.topic_images = topic_new }
-                    parent.topic_images
+                    todo_media = Runnable{ images.topic = topic_new }
+                    images.topic
                 }
                 2 -> {
-                    todo_media = Runnable{ parent.topic_audios = topic_new }
-                    parent.topic_audios
+                    todo_media = Runnable{ audios.topic = topic_new }
+                    audios.topic
                 }
                 else -> ""
             }
         }
         //void ask(int *answer_storage, ...)
         //... := string item1, int value1, string item2, int value2, ...
-        func["ask"] = {
+        cm.func["ask"] = {
             val ret = it[0].toString()
             val answers = it.drop(1)
-            mem.remove(ret)
+            cm.mem.remove(ret)
             todo_ask = Runnable {
-                that.l_main.llQuestion.removeAllViews()
+                vQuestion.removeAllViews()
                 for (i in 0 .. answers.size - 2 step 2) {
                     val s = answers[i] as String
                     val n = answers[i + 1] as Int
-                    that.l_main.llQuestion.addView(LabeledRoundButton(that).apply {
-                        val color_id = MainActivity.button_colors[(MainActivity.button_colors.size / 2 + i) % MainActivity.button_colors.size]
+                    vQuestion.addView(LabeledRoundButton(context).apply {
+                        val color_id = button_colors[(button_colors.size / 2 + i) % button_colors.size]
                         color = if (android.os.Build.VERSION.SDK_INT >= 23)
-                            that.resources.getColor(color_id, null)
-                        else @Suppress("DEPRECATION") that.resources.getColor(color_id)
+                            context.resources.getColor(color_id, null)
+                        else @Suppress("DEPRECATION") context.resources.getColor(color_id)
                         text = s
                         textSize = fontsize
                         setCircleOnClickListener {
-                            that.l_main.llQuestion.visibility = View.INVISIBLE
-                            mem[ret] = n
+                            vQuestion.visibility = View.INVISIBLE
+                            cm.mem[ret] = n
                         }
                     })
                 }
-                if (answers.isNotEmpty()) that.l_main.llQuestion.visibility = View.VISIBLE
+                if (answers.isNotEmpty()) vQuestion.visibility = View.VISIBLE
             }
         }
         //void react(...)
         //... := string react_passage1, string react_passage2, ...
-        func["react"] = {
+        cm.func["react"] = {
             val actions = it.filter { s -> s in lines_passages }
             todo_react = Runnable {
                 var i0 = 0
-                that.l_main.llResponse.removeAllViews()
+                vResponse.removeAllViews()
                 for (s in actions) {
-                    that.l_main.llResponse.addView(LabeledRoundButton(that).apply {
+                    vResponse.addView(LabeledRoundButton(context).apply {
                         color = if (android.os.Build.VERSION.SDK_INT >= 23)
-                            that.resources.getColor(MainActivity.button_colors[i0], null)
-                        else @Suppress("DEPRECATION") that.resources.getColor(MainActivity.button_colors[i0])
+                            context.resources.getColor(button_colors[i0], null)
+                        else @Suppress("DEPRECATION") context.resources.getColor(button_colors[i0])
                         text = s as String
                         textSize = fontsize
-                        setCircleOnClickListener(::React)
+                        setCircleOnClickListener(::react)
                     })
-                    i0 = (i0 + 1) % MainActivity.button_colors.size
+                    i0 = (i0 + 1) % button_colors.size
                 }
-                that.OnClickLower(that.l_main.llResponse)
+                showResponseButton()
             }
         }
         //int load(string module_name)
-        func["load"] = {
+        cm.func["load"] = {
             try {
-                that.openFileInput(it[0] as String).apply {
+                context.openFileInput(it[0] as String).apply {
                     @Suppress("UNCHECKED_CAST")
                     val mem_loaded = java.io.ObjectInputStream(this).readObject() as MutableMap<String, Int>
-                    mem.clear()
-                    mem += mem_loaded
+                    cm.mem.clear()
+                    cm.mem += mem_loaded
                     close()
                 }; 0
-            } catch (e: java.io.FileNotFoundException) {
-                1
-            } catch (e: TypeCastException) {
-                that.Alert(that.getString(R.string.merr_badmemory)); 2
+            }
+            catch (e: java.io.FileNotFoundException) { 1 }
+            catch (e: TypeCastException) {
+                context.deleteFile(it[0] as String)
+                exit(context.getString(R.string.merr_badmemory))
+                2
             }
         }
         //int save(string module_name)
-        func["save"] = {
+        cm.func["save"] = {
             try {
-                that.openFileOutput(it[0] as String, android.content.Context.MODE_PRIVATE)
-                    .apply {
-                        java.io.ObjectOutputStream(this).writeObject(mem)
-                        close()
-                    }; 0
-            } catch (e: java.io.FileNotFoundException) {
-                1
+                val o = context.openFileOutput(it[0] as String, android.content.Context.MODE_PRIVATE)
+                java.io.ObjectOutputStream(o).writeObject(cm.mem)
+                o.close()
+                0
             }
+            catch (e: java.io.FileNotFoundException) { 1 }
         }
     }
 
-    //Script thread
-    private fun RunScript(s:String):Any {
+    private val metronome = if (android.os.Build.VERSION.SDK_INT >= 21)
+        android.media.SoundPool.Builder()
+            .setMaxStreams(3)
+            .setAudioAttributes(android.media.AudioAttributes.Builder()
+                .setUsage(android.media.AudioAttributes.USAGE_GAME)
+                .build())
+            .build()
+    else @Suppress("DEPRECATION") android.media.SoundPool(3, android.media.AudioManager.STREAM_MUSIC, 0)
+    private val metronomeLong = metronome.load(context, R.raw.metronome, 1)
+    private val metronomeMiddle = metronomeLong
+    private val metronomeShort = metronomeLong
+    private var metronomeInterval = 0
+
+    private val rHideResponse = Runnable { vResponse.alpha = 0.3f }
+    private val rMetronomeLong = object:Runnable {
+        override fun run() {
+            metronome.play(metronomeLong, 1.0F, 1.0F, 0, 0, 1.0F)
+            handler.postDelayed(this, metronomeInterval.toLong())
+        }
+    }
+    private val rMetronomeMiddle = object:Runnable {
+        override fun run() {
+            metronome.play(metronomeMiddle, 1.0F, 1.0F, 0, 0, 1.0F)
+            handler.postDelayed(this, metronomeInterval.toLong())
+        }
+    }
+    private val rMetronomeShort = object:Runnable {
+        override fun run() {
+            metronome.play(metronomeShort, 1.0F, 1.0F, 0, 0, 1.0F)
+            handler.postDelayed(this, metronomeInterval.toLong())
+        }
+    }
+
+    companion object {
+        private val text_colors = arrayOf(
+            R.color.Poppy,
+            R.color.Rose,
+            R.color.Phlox,
+            R.color.Byzantium,
+            R.color.Pansy)
+
+        private val button_colors = arrayOf(
+            R.color.Red,
+            R.color.Orange,
+            R.color.Yellow,
+            R.color.Green,
+            R.color.Blue,
+            R.color.Cyan,
+            R.color.Purple)
+    }
+
+    @WorkerThread private fun runScript(s:String):Any {
         try {
             val ret = cm.Eval(s)
             return (ret as? Pair<*,*>)?.first ?: ret
@@ -211,14 +280,14 @@ class MainActivity_Lines(private val that:MainActivity, private val parent:MainA
         catch (e:CScriptVirtualMachine.BadScriptException) {
             val line = i_lines + 1
             val ns = topic
-            that.handler_delay.post {
-                that.Alert(that.getString(R.string.merr_badscript,
+            handler.post {
+                exit(context.getString(R.string.merr_badscript,
                     when (e) {
-                        is CScriptVirtualMachine.InvalidSyntax -> that.getString(R.string.merr_badscript_syntax)
-                        is CScriptVirtualMachine.UnbalancedBracket -> that.getString(R.string.merr_badscript_bracket)
-                        is CScriptVirtualMachine.UndefinedName -> that.getString(R.string.merr_badscript_name)
-                        is CScriptVirtualMachine.AssignToRvalue -> that.getString(R.string.merr_badscript_rvalue)
-                        is CScriptVirtualMachine.TypeError -> that.getString(R.string.merr_badscript_type, e.s_value, e.s_type)
+                        is CScriptVirtualMachine.InvalidSyntax -> context.getString(R.string.merr_badscript_syntax)
+                        is CScriptVirtualMachine.UnbalancedBracket -> context.getString(R.string.merr_badscript_bracket)
+                        is CScriptVirtualMachine.UndefinedName -> context.getString(R.string.merr_badscript_name)
+                        is CScriptVirtualMachine.AssignToRvalue -> context.getString(R.string.merr_badscript_rvalue)
+                        is CScriptVirtualMachine.TypeError -> context.getString(R.string.merr_badscript_type, e.s_value, e.s_type)
                     },
                     if (e.message?.isNotBlank() == true) ": ${e.message}" else ".",
                     line,
@@ -228,8 +297,8 @@ class MainActivity_Lines(private val that:MainActivity, private val parent:MainA
         catch (e:Exception) {
             val line = i_lines + 1
             val ns = topic
-            that.handler_delay.post {
-                that.Alert(that.getString(R.string.merr_badscript, e.toString(), "", line, if (ns == "")
+            handler.post {
+                exit(context.getString(R.string.merr_badscript, e.toString(), "", line, if (ns == "")
                     "script.txt"
                 else "script_${ns}.txt"))
             }
@@ -237,7 +306,7 @@ class MainActivity_Lines(private val that:MainActivity, private val parent:MainA
         return ""
     }
 
-    private fun GetLevel(s:String):Int {
+    @WorkerThread private fun getLevel(s:String):Int {
         val level = s.indexOfFirst { c:Char -> !c.isWhitespace() }
         return when {
             level == -1 -> s.length shl 1
@@ -246,11 +315,11 @@ class MainActivity_Lines(private val that:MainActivity, private val parent:MainA
         }
     }
 
-    private fun NextLine() {
+    @WorkerThread private fun nextLine() {
         var jump_to_top = true
         if (i_lines < passage.size - 1) {
-            val level_this = GetLevel(passage[i_lines]) and -2
-            val level_next = GetLevel(passage[i_lines + 1])
+            val level_this = getLevel(passage[i_lines]) and -2
+            val level_next = getLevel(passage[i_lines + 1])
             if (level_next and 1 != 0) {
                 jump_to_top = false
                 i_lines += 1
@@ -259,7 +328,7 @@ class MainActivity_Lines(private val that:MainActivity, private val parent:MainA
                 jump_to_top = false
                 mutableListOf(i_lines + 1).also {
                     for (i in i_lines + 2 until passage.size) {
-                        val level_new = GetLevel(passage[i])
+                        val level_new = getLevel(passage[i])
                         if (level_next == level_new) it.add(i)
                         else if (level_next > level_new) break
                     }
@@ -269,7 +338,7 @@ class MainActivity_Lines(private val that:MainActivity, private val parent:MainA
             else if (level_next == level_this) {
                 var level_base = level_this
                 for (i in i_lines + 2 until passage.size) {
-                    val level_base_new = GetLevel(passage[i])
+                    val level_base_new = getLevel(passage[i])
                     if (level_base_new < level_base) {
                         if (level_base_new and 1 != 0) {
                             jump_to_top = false
@@ -284,9 +353,9 @@ class MainActivity_Lines(private val that:MainActivity, private val parent:MainA
         }
         if (jump_to_top) {
             mutableListOf(0).also {
-                var level = GetLevel(passage.first())
+                var level = getLevel(passage.first())
                 for(i in 1 until passage.size) {
-                    val level_this = GetLevel(passage[i])
+                    val level_this = getLevel(passage[i])
                     if (level_this and 1 == 0) {
                         if (level > level_this) {
                             level = level_this
@@ -300,15 +369,15 @@ class MainActivity_Lines(private val that:MainActivity, private val parent:MainA
         }
     }
 
-    private fun CalculateDelay(s:String):Long = when {
+    @WorkerThread private fun calculateDelay(s:String):Long = when {
         s.isBlank() -> 0L
         s.count { !it.isWhitespace() } == 2 && s.first().isSurrogate() -> 2000L
         else -> 1000L +
-            text_speed * (s.count { c:Char->c.isLetterOrDigit() }) /*+
-            text_speed * (s.count { c:Char->c in '\u4E00' .. '\u9FFF' })*/
+            textSpeed * (s.count { c:Char->c.isLetterOrDigit() }) /*+
+            textSpeed * (s.count { c:Char->c in '\u4E00' .. '\u9FFF' })*/
     }
 
-    private fun ParseLine(last_delay:Long) {
+    @WorkerThread private fun parseLine(last_delay:Long) {
         todo_wait = 0
         todo_jump = -1
         todo_metronome = -1
@@ -320,98 +389,101 @@ class MainActivity_Lines(private val that:MainActivity, private val parent:MainA
             .removePrefix(":")
             .replace(Regex("""^@.*?@"""), "")
             .replace(Regex("""\$(\$)?\{(.*?)\}""")) {
-            val s_ret = RunScript(it.groups[2]!!.value)
+            val s_ret = runScript(it.groups[2]!!.value)
             if (it.groups[1] != null) "" else s_ret.toString()
         }
         val wait_offset = todo_wait
         when {
             "=>" in s -> {
-                val s_display = CEscape(s.substringBeforeLast("=>").trimEnd())
-                val delay = CalculateDelay(s_display)
+                val s_display = cEscape(s.substringBeforeLast("=>").trimEnd())
+                val delay = calculateDelay(s_display)
                 val target_goto = s.substringAfterLast("=>").trim { it.isWhitespace() || it == '_' }
                 if (target_goto != topic) {
-                    val f = File(parent.dir_media, "script${ if (target_goto == "") "" else "_$target_goto" }.txt")
+                    val f = File(dirMedia, "script${ if (target_goto == "") "" else "_$target_goto" }.txt")
                     if (f.canRead()) {
                         topic = target_goto
-                        LoadScript(f)
+                        loadScript(f)
                         todo_jump = 0
                     }
                 }
-                that.handler_delay.postAtTime({
-                    DisplayLine(s_display, delay)
-                    executor.execute { PrepareNextLine(delay + wait_offset) }
+                handler.postAtTime({
+                    displayLine(s_display, delay)
+                    executor.execute { prepareNextLine(delay + wait_offset) }
                 }, callback_token, uptimeMillis() + last_delay)
             }
             "<-" in s && passage !== lines_main -> {
-                val s_display = CEscape(s.substringBeforeLast("<-").trimEnd())
-                val delay = CalculateDelay(s_display)
+                val s_display = cEscape(s.substringBeforeLast("<-").trimEnd())
+                val delay = calculateDelay(s_display)
 				passage = lines_main
                 passage_name = ""
                 s.substringAfterLast("<-").trimEnd().toIntOrNull().also {
                     if (it != null) todo_jump = i_lines_return + it
                     else i_lines = i_lines_return
                 }
-                that.handler_delay.postAtTime({
-                    DisplayLine(s_display, delay)
-                    that.handler_delay.postAtTime({ that.l_main.llResponse.visibility = View.VISIBLE }, callback_token, uptimeMillis() + delay + wait_offset)
-                    executor.execute { PrepareNextLine(delay + wait_offset) }
+                handler.postAtTime({
+                    displayLine(s_display, delay)
+                    handler.postAtTime({ vResponse.visibility = View.VISIBLE }, callback_token, uptimeMillis() + delay + wait_offset)
+                    executor.execute { prepareNextLine(delay + wait_offset) }
                 }, callback_token, uptimeMillis() + last_delay)
             }
             "->" in s && passage === lines_main -> {
-                val s_display = CEscape(s.substringBeforeLast("->").trimEnd())
-                val delay = CalculateDelay(s_display)
+                val s_display = cEscape(s.substringBeforeLast("->").trimEnd())
+                val delay = calculateDelay(s_display)
 				val pos_block_new = lines_passages[s.substringAfterLast("->", "")]
 				if (pos_block_new != null) {
 					i_lines_return = i_lines
 					passage = pos_block_new
                     passage_name = s.substringAfterLast("->")
                     todo_jump = 0
-                    that.handler_delay.postAtTime({
-                        that.l_main.llResponse.visibility = View.INVISIBLE
-                        DisplayLine(s_display, delay)
-                        executor.execute { PrepareNextLine(delay + wait_offset) }
+                    handler.postAtTime({
+                        vResponse.visibility = View.INVISIBLE
+                        displayLine(s_display, delay)
+                        executor.execute { prepareNextLine(delay + wait_offset) }
                     }, callback_token, uptimeMillis() + last_delay)
 				}
-                else that.handler_delay.postAtTime({
-                    DisplayLine(s_display, delay)
-                    executor.execute { PrepareNextLine(delay + wait_offset) }
+                else handler.postAtTime({
+                    displayLine(s_display, delay)
+                    executor.execute { prepareNextLine(delay + wait_offset) }
                 }, callback_token, uptimeMillis() + last_delay)
             }
             else -> {
-                val delay = CalculateDelay(s)
-                that.handler_delay.postAtTime({
-                    DisplayLine(CEscape(s), delay)
-                    executor.execute { PrepareNextLine(delay + wait_offset) }
+                val delay = calculateDelay(s)
+                handler.postAtTime({
+                    displayLine(cEscape(s), delay)
+                    executor.execute { prepareNextLine(delay + wait_offset) }
                 }, callback_token, uptimeMillis() + last_delay)
             }
         }
     }
 
-    private fun PrepareNextLine(delay:Long) {
+    @WorkerThread private fun prepareNextLine(delay:Long) {
+        if (stopped) return
+        while (paused) Thread.sleep(1000L)
+
         if (passage.isNotEmpty()) {
             val todonow_metronome = todo_metronome
             if (todonow_metronome >= 0) {
                 frequency_metronome = todonow_metronome
-                that.handler_delay.post{ parent.SetMetronome(todonow_metronome) }
+                handler.post{ setMetronome(todonow_metronome) }
             }
 
             val todonow_ask = todo_ask
-            if (todonow_ask != null) that.handler_delay.post(todonow_ask)
+            if (todonow_ask != null) handler.post(todonow_ask)
 
             val todonow_react = todo_react
-            if (todonow_react != null) that.handler_delay.post(todonow_react)
+            if (todonow_react != null) handler.post(todonow_react)
 
             val todonow_media = todo_media
-            if (todonow_media != null) that.handler_delay.post(todonow_media)
+            if (todonow_media != null) handler.post(todonow_media)
 
             if (todo_jump in passage.indices)
                 i_lines = todo_jump
-            else NextLine()
-            ParseLine(delay)
+            else nextLine()
+            parseLine(delay)
         }
     }
 
-    private fun LoadScript(f:File) {
+    private fun loadScript(f:File) {
         val lines = f.readLines()
         var i0 = lines.size
         for (i in lines.indices) {
@@ -454,57 +526,75 @@ class MainActivity_Lines(private val that:MainActivity, private val parent:MainA
         passage_name = ""
     }
 
-    //Main thread
-    private fun DisplayLine(s:String, delay:Long) { //, -1, 0.15f
+    @UiThread private fun displayLine(s:String, delay:Long) { //, -1, 0.15f
         if (delay == 0L) return
-        val tv = outlineTextView(that).also {
+        val tv = OutlineTextView(context).also {
             it.outline_color = -1
             it.outline_width = 0.15f
             it.layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
             it.text = s
-            it.DoEmoji(that)
-            val color_id = MainActivity.text_colors[parent.random.nextInt(MainActivity.text_colors.size)]
+            it.DoEmoji(context)
+            val color_id = text_colors[random.nextInt(text_colors.size)]
             it.setTextColor(if (android.os.Build.VERSION.SDK_INT >= 23)
-                that.resources.getColor(color_id, null)
-            else @Suppress("DEPRECATION") that.resources.getColor(color_id))
-            it.textSize = fontsize//TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_PX, fontsize, that.resources.displayMetrics)
+                context.resources.getColor(color_id, null)
+            else @Suppress("DEPRECATION") context.resources.getColor(color_id))
+            it.textSize = fontsize//TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_PX, fontsize, activity.resources.displayMetrics)
             it.typeface = android.graphics.Typeface.DEFAULT_BOLD
-            it.maxWidth = that.l_main.relaMain.width * 3 / 10
+            it.maxWidth = width * 3 / 10
             it.setTextIsSelectable(false)
             it.visibility = View.INVISIBLE
         }
-        that.l_main.relaMain.addView(tv)
-        that.handler_delay.postDelayed({
+        vText.addView(tv)
+        handler.postDelayed({
             //tv.width and tv.height will be zero if not delayed
-            tv.x = fontsize * 3//parent.random.nextFloat() * (that.rela_main.width - tv.width)
-            tv.y = fontsize * 3//parent.random.nextFloat() * (that.rela_main.height - tv.height)
+            tv.x = fontsize * 3//multimedia.random.nextFloat() * (activity.rela_main.width - tv.width)
+            tv.y = fontsize * 3//multimedia.random.nextFloat() * (activity.rela_main.height - tv.height)
             tv.visibility = View.VISIBLE
             AlphaAnimation(0f, 1f).also {
                 it.duration = if(delay > 2000L) 200L else delay / 10
                 tv.startAnimation(it)
             }
         }, 100L)
-        that.handler_delay.postDelayed({
+        handler.postDelayed({
             AlphaAnimation(1f, 0f).also {
                 it.duration = if(delay > 8000L) 2000L else delay / 4
                 tv.startAnimation(it)
             }
         }, delay - if(delay > 8000L) 1600L else delay / 5)
-        that.handler_delay.postDelayed({
-            that.l_main.relaMain.removeView(tv)
+        handler.postDelayed({
+            vText.removeView(tv)
         }, delay + if(delay > 8000L) 400L else delay / 20)
     }
 
-    private fun React(v:View) {
-        that.l_main.llResponse.visibility = View.INVISIBLE
-        that.handler_delay.removeCallbacksAndMessages(callback_token)
-        that.l_main.relaMain.removeAllViews()
+    private fun react(v:View) {
+        vResponse.visibility = View.INVISIBLE
+        handler.removeCallbacksAndMessages(callback_token)
+        vText.removeAllViews()
         executor.execute {
             i_lines_return = i_lines
             passage = lines_passages[(v.parent as LabeledRoundButton).text]!!
             passage_name = (v.parent as LabeledRoundButton).text.toString()
             todo_jump = 0
-            PrepareNextLine(0L)
+            prepareNextLine(0L)
         }
+    }
+
+    @UiThread private fun showResponseButton() {
+        vResponse.alpha = 0.9f
+        handler.removeCallbacks(rHideResponse)
+        handler.postDelayed(rHideResponse, 5000L)
+    }
+
+    @UiThread private fun setMetronome(interval:Int) {
+        handler.removeCallbacks(rMetronomeLong)
+        handler.removeCallbacks(rMetronomeMiddle)
+        handler.removeCallbacks(rMetronomeShort)
+        metronomeInterval = interval
+        handler.post(when {
+            interval >= 3000 -> rMetronomeLong
+            interval >= 1000 -> rMetronomeMiddle
+            interval >= 200 -> rMetronomeShort
+            else -> return
+        })
     }
 }

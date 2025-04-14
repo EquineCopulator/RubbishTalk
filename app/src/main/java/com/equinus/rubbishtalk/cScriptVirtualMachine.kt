@@ -1,6 +1,6 @@
 package com.equinus.rubbishtalk
 
-fun CEscape(s:String):String {
+fun cEscape(s:String):String {
     return Regex("""\\(?:([abefnrtv\\'"?])|([0-7]{1,3})|x([A-Fa-f0-9]+)|u([A-Fa-f0-9]{4})|U([A-Fa-f0-9]{8})|)""").replace(s) {
         when {
             it.groups[1] != null -> when(it.groups[1]!!.value) {
@@ -164,7 +164,7 @@ class CScriptVirtualMachine {
         val a3 = s.substring(r3).trim()
         when (operator) {
             "(L" -> return Eval(a2)
-            "\"L" -> return CEscape(a2)
+            "\"L" -> return cEscape(a2)
             "(" -> return FuncCall(a1, a2)
             "[" -> {
                 val address = (CValue<Int>(Eval(a1)) + CValue<Int>(Eval(a2))).toString()
@@ -303,8 +303,11 @@ class CScriptVirtualMachine {
         return (func[(Eval(func_name) as? Pair<*,*> ?: throw TypeError(func_name, "function")).second as String] ?: throw UndefinedName(func_name))(func_args)
     }
 
-    private fun IfDef(func_args:List<Any>):Any = if (func_args[0].toString() in mem) 1 else 0
-    private fun Undef(func_args:List<Any>):Any = mem.remove(func_args[0].toString()) ?: throw UndefinedName(func_args[0].toString())
+    private fun IfDef(func_args:List<Any>):Any =
+        if (func_args[0].toString() in mem) 1 else 0
+    private fun Undef(func_args:List<Any>):Any =
+        mem.remove(func_args[0].toString()) ?: throw UndefinedName(func_args[0].toString())
     private fun Reset(func_args:List<Any>):Any { mem.clear(); return 0 }
-    private fun Str(func_args:List<Any>):Any = (func_args[0] as String).format(*func_args.drop(1).toTypedArray())
+    private fun Str(func_args:List<Any>):Any =
+        (func_args[0] as String).format(*func_args.drop(1).toTypedArray())
 }

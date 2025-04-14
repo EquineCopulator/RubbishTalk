@@ -1,14 +1,18 @@
 package com.equinus.rubbishtalk
 
-import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.text.TextPaint
+import android.util.AttributeSet
 import android.widget.TextView
 
-@SuppressLint("AppCompatCustomView")
-class outlineTextView(context: Context): TextView(context) {
+class OutlineTextView:TextView {
+    constructor(context:Context):super(context)
+    constructor(constext:Context, attr:AttributeSet?):super(constext, attr)
+    constructor(constext:Context, attr:AttributeSet?, defStyleAttr:Int)
+            :super(constext, attr, defStyleAttr)
+
     companion object {
         private const val range = """[\u2600-\u27BF\U0001F300-\U0001F64F\U0001F900-\U0001F9FF]"""
         val rg = Regex("(?<!$range)(?=$range).+?(?<=$range)(?!$range)")

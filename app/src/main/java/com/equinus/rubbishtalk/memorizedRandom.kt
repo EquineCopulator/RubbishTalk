@@ -1,6 +1,6 @@
 package com.equinus.rubbishtalk
 
-class MemorizedRandom(private val random: java.util.Random) {
+class MemorizedRandom(private val random: kotlin.random.Random) {
     private val mem = mutableMapOf<Any, MutableList<Int>>()
     fun Next(token:Any, size:Int):Int {
         if (size <= 1) return 0

@@ -3,6 +3,7 @@
 
     <string name="ok" tools:ignore="MissingTranslation">OK</string>
     <string name="cancel">Cancel</string>
+    <string name="delete">Delete</string>
     <string name="got">Got it</string>
     <string name="nogot">Remind me later</string>
     <string name="reqper">Request permission</string>
@@ -23,15 +24,14 @@
     <string name="merr_gamename_existing">Existing game name: %1$s</string>
     <string name="merr_gamename_invalid">Invalid game name: %1$s</string>
     <string name="merr_permission_denied">User mannually denied the request for permission %1$s. The App can not continue. Please restart the App.</string>
+    <string name="merr_nonexist">The path of media does not exist: %1$s</string>
     <string name="merr_storagefailed">File access denied for unknown reason. Sorry, the developer is too stupid to provide a solution or further information.</string>
     <string name="merr_nopermission_read">This App needs the read-storage permission (READ_EXTERNAL_STORAGE) to display media. You can grant the permission manually, or make the App try to request for it.</string>
     <string name="merr_nopermission_write">This App needs the write-storage permission (WRITE_EXTERNAL_STORAGE) to save the data of scripts. You can grant the permission manually, or make the App try to request for it.\nThis is optional. The App will not save data between each launches if not granted this permission.</string>
     <string name="merr_nopermission_manage">You device may be running Android 11 or higher. A further manage-storage permission (MANAGE_EXTERNAL_STORAGE) is needed to access the storage. You can grant the permission manually, or make the App try to request for it.</string>
-    <string name="merr_nomedia">No media file is loaded.\nTap the up-right corner to open the Option menu. You can either specify a new media folder there, or put some media files in the current media folder and then restart the app.</string>
+    <string name="merr_nomedia">No media file is loaded.\nLong press the game button to open the Option menu. You can either specify a new media folder there, or put some media files in the current media folder and then start the game again.</string>
     <string name="merr_fileaccess">Can not read file "%1$s", access denied.</string>
-    <string name="merr_sessionend">Session ended.</string>
     <string name="merr_badpath">The specified path is inaccessible.</string>
-    <string name="merr_pathchanged">The media path is changed. It will come to effect after restarting the app.</string>
     <string name="merr_badimg">Unsupported image: %1$s</string>
     <string name="merr_badmemory">Script memory corrupted.</string>
     <string name="merr_badscript">%1$s%2$s\n\t in line %3$d of %4$s.</string>
@@ -51,7 +51,7 @@
     <string name="article_welcome">
         "Thank you for using Rubbish Talk, developed by Equinus. This app displays a slideshow with some text.
         To make it run, you need to grant it the permission to access files on your storage, and put the media files (image, video or audio) and text scripts you want it to display in the specified path.
-        Tap up-right corner of the screen to open Settings or see Help for explanation of other features."
+        Tap up-right corner of the screen to see Help for explanation of other features."
     </string>
     <string name="article_help" tools:ignore="MissingTranslation,Typos">
 "Media
