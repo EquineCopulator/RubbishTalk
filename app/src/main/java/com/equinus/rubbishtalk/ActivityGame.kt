@@ -77,13 +77,6 @@ class ActivityGame:Activity() {
         }
     }
 
-    private fun exit(msg:String?) {
-        if (msg != null) {
-            setResult(RESULT_OK, Intent().putExtra(SharedConst.EXTRA_ERROR, msg))
-        }
-        finish()
-    }
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -106,7 +99,9 @@ class ActivityGame:Activity() {
         lytGame = GameBinding.inflate(layoutInflater)
 
         val i = intent!!
-        dirMedia = i.getStringExtra(SharedConst.EXTRA_DIR_MEDIA)!!
+        dirMedia = relToAbsPath(
+            android.os.Environment.getExternalStorageDirectory().absolutePath,
+            i.getStringExtra(SharedConst.EXTRA_DIR_MEDIA)!!)
         val textSpeed = i.getLongExtra(SharedConst.EXTRA_TEXT_SPEED, -1L)
         if (textSpeed < 0) throw NullPointerException()
         val imageSpeed = i.getLongExtra(SharedConst.EXTRA_IMAGE_SPEED, -1L)
@@ -116,7 +111,6 @@ class ActivityGame:Activity() {
             width,
             height,
             imageSpeed,
-            dirMedia,
             handler,
             Random.Default,
             lytGame.viewMain,
@@ -124,7 +118,6 @@ class ActivityGame:Activity() {
         audios = MediaAudios(
             width,
             height,
-            dirMedia,
             handler,
             Random.Default,
             ::exit,
@@ -168,13 +161,20 @@ class ActivityGame:Activity() {
     }
 
     override fun onResume() {
+        super.onResume()
         lines.resume()
         images.resume()
         audios.resume()
-        super.onResume()
     }
 
     override fun onTouchEvent(event:MotionEvent):Boolean {
+        val b = enlarger.onTouchEvent(event)
+        if (enlarger.isInProgress) {
+            images.pause()
+            images.resume()
+            return b
+        }
+
         if (event.action == MotionEvent.ACTION_UP) {
             val x = lytGame.root.x
             if (x < -SCROLL_DISTANCE) {
@@ -188,10 +188,21 @@ class ActivityGame:Activity() {
             else lytGame.root.animate().x(0f)
         }
 
-        val b = enlarger.onTouchEvent(event)
-        if (enlarger.isInProgress) return b
+        if (scroller.onTouchEvent(event)) {
+            images.pause()
+            images.resume()
+            return true
+        }
 
-        return scroller.onTouchEvent(event) || super.onTouchEvent(event)
+        return super.onTouchEvent(event)
+    }
+
+    private fun relToAbsPath(base:String, path:String):String {
+        val p = path.trimStart()
+        if (!p.startsWith("." + File.separator))
+            if (!p.startsWith(".." + File.separator))
+                return p
+        return base + "." + File.separator + p
     }
 
     private fun requestPerm() {
@@ -211,28 +222,24 @@ class ActivityGame:Activity() {
         val fInclude = File(dirMedia, "include.txt")
         if (fInclude.canRead()) {
             for (line in fInclude.readLines()) {
+                val f:String
+                val topic:String?
                 if (line.startsWith("<") && ">" in line) {
-                    ret = images.loadMedia(
-                        line.substringAfter(">"),
-                        line.substringBefore(">").substring(1))
-                    if (ret == MediaNonlines.LOADFILE_DENIED)
-                        return requestPerm()
-
-                    ret = audios.loadMedia(
-                        line.substringAfter(">"),
-                        line.substringBefore(">").substring(1))
-                    if (ret == MediaNonlines.LOADFILE_DENIED)
-                        return requestPerm()
+                    f = relToAbsPath(dirMedia, line.substringAfter(">"))
+                    topic = line.substringBefore(">").substring(1)
                 }
                 else {
-                    ret = images.loadMedia(line, null)
-                    if (ret == MediaNonlines.LOADFILE_DENIED)
-                        return requestPerm()
-
-                    ret = audios.loadMedia(line, null)
-                    if (ret == MediaNonlines.LOADFILE_DENIED)
-                        return requestPerm()
+                    f = relToAbsPath(dirMedia, line)
+                    topic = null
                 }
+
+                ret = images.loadMedia(f, topic)
+                if (ret == MediaNonlines.LOADFILE_DENIED)
+                    return requestPerm()
+
+                ret = audios.loadMedia(f, topic)
+                if (ret == MediaNonlines.LOADFILE_DENIED)
+                    return requestPerm()
             }
         }
         else if (fInclude.exists()) return requestPerm()
@@ -245,5 +252,12 @@ class ActivityGame:Activity() {
 
         images.topic = ""
         audios.topic = ""
+    }
+
+    private fun exit(msg:String?) {
+        if (msg != null) {
+            setResult(RESULT_OK, Intent().putExtra(SharedConst.EXTRA_ERROR, msg))
+        }
+        finish()
     }
 }

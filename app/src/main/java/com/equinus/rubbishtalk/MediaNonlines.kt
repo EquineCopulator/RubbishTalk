@@ -4,8 +4,7 @@ import java.io.File
 
 sealed class MediaNonlines(
     protected val handler:android.os.Handler,
-    protected val random:kotlin.random.Random,
-    protected val dirMedia:String)
+    protected val random:kotlin.random.Random)
 {
     abstract fun pause()
     abstract fun resume()
@@ -53,11 +52,7 @@ sealed class MediaNonlines(
     }
 
     fun loadMedia(dir:String, topic_this:String?):Int {
-        val dir_this = dir.trimStart()
-        val dir_file =
-            if (dir_this.startsWith("." + File.separator) || dir_this.startsWith(".." + File.separator))
-                File(dirMedia + File.separator + dir_this)
-            else File(dir_this)
+        val dir_file = File(dir)
         val files_new = if (dir_file.isDirectory)
             dir_file.listFiles {
                 f -> f.extension.lowercase() in accepted_extensions
@@ -141,11 +136,10 @@ class MediaImages(
     private val width:Int,
     private val height:Int,
     private val imageSpeed:Long,
-    dirMedia:String,
     handler:android.os.Handler,
     random:kotlin.random.Random,
     private val vImage:android.widget.ImageView,
-    private val vText:android.view.View): MediaNonlines(handler, random, dirMedia)
+    private val vText:android.view.View): MediaNonlines(handler, random)
 {
     override fun pause() = handler.removeCallbacks(runnableChooseMedia)
     override fun resume() = decideNextImage()
@@ -204,12 +198,11 @@ class MediaImages(
 class MediaAudios(
     private val width:Int,
     private val height:Int,
-    dirMedia:String,
     handler:android.os.Handler,
     random:kotlin.random.Random,
     private val errmsg:(String?)->Unit,
     private val vVideo:android.view.SurfaceView,
-    context:android.content.Context): MediaNonlines(handler, random, dirMedia)
+    context:android.content.Context): MediaNonlines(handler, random)
 {
     override fun pause() {
         if (player.isPlaying) {
