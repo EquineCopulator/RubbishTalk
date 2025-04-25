@@ -1,0 +1,13 @@
+[versions]
+kotlin = "2.0.0"
+
+[libraries]
+kotlin-stdlib = { group = "org.jetbrains.kotlin", name = "kotlin-stdlib-jdk7", version.ref = "kotlin" }
+androidx-core = { group = "androidx.core", name = "core-ktx", version = "1.10.1" }
+junit = { group = "junit", name =  "junit", version = "4.13.2" }
+test-runner = { group = "androidx.test", name = "runner", version = "1.5.2" }
+test-espresso = { group = "androidx.test.espresso", name = "espresso-core", version = "3.5.1" }
+
+[plugins]
+gradle = { id = "com.android.application", version = "8.5.1" }
+kotlin = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }

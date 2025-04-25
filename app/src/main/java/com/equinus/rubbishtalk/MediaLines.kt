@@ -71,7 +71,7 @@ class MediaLines(
     private var todo_react:Runnable? = null
     private var todo_media:Runnable? = null
 
-    private val cm = CScriptVirtualMachine()
+    private val cm = CScriptMachine()
     init {
         //int exit()
         cm.func["exit"] = {
@@ -277,17 +277,17 @@ class MediaLines(
             val ret = cm.Eval(s)
             return (ret as? Pair<*,*>)?.first ?: ret
         }
-        catch (e:CScriptVirtualMachine.BadScriptException) {
+        catch (e:CScriptMachine.BadScriptException) {
             val line = i_lines + 1
             val ns = topic
             handler.post {
                 exit(context.getString(R.string.merr_badscript,
                     when (e) {
-                        is CScriptVirtualMachine.InvalidSyntax -> context.getString(R.string.merr_badscript_syntax)
-                        is CScriptVirtualMachine.UnbalancedBracket -> context.getString(R.string.merr_badscript_bracket)
-                        is CScriptVirtualMachine.UndefinedName -> context.getString(R.string.merr_badscript_name)
-                        is CScriptVirtualMachine.AssignToRvalue -> context.getString(R.string.merr_badscript_rvalue)
-                        is CScriptVirtualMachine.TypeError -> context.getString(R.string.merr_badscript_type, e.s_value, e.s_type)
+                        is CScriptMachine.InvalidSyntax -> context.getString(R.string.merr_badscript_syntax)
+                        is CScriptMachine.UnbalancedBracket -> context.getString(R.string.merr_badscript_bracket)
+                        is CScriptMachine.UndefinedName -> context.getString(R.string.merr_badscript_name)
+                        is CScriptMachine.AssignToRvalue -> context.getString(R.string.merr_badscript_rvalue)
+                        is CScriptMachine.TypeError -> context.getString(R.string.merr_badscript_type, e.s_value, e.s_type)
                     },
                     if (e.message?.isNotBlank() == true) ": ${e.message}" else ".",
                     line,
@@ -395,7 +395,7 @@ class MediaLines(
         val wait_offset = todo_wait
         when {
             "=>" in s -> {
-                val s_display = cEscape(s.substringBeforeLast("=>").trimEnd())
+                val s_display = CScriptMachine.escape(s.substringBeforeLast("=>").trimEnd())
                 val delay = calculateDelay(s_display)
                 val target_goto = s.substringAfterLast("=>").trim { it.isWhitespace() || it == '_' }
                 if (target_goto != topic) {
@@ -412,7 +412,7 @@ class MediaLines(
                 }, callback_token, uptimeMillis() + last_delay)
             }
             "<-" in s && passage !== lines_main -> {
-                val s_display = cEscape(s.substringBeforeLast("<-").trimEnd())
+                val s_display = CScriptMachine.escape(s.substringBeforeLast("<-").trimEnd())
                 val delay = calculateDelay(s_display)
 				passage = lines_main
                 passage_name = ""
@@ -427,7 +427,7 @@ class MediaLines(
                 }, callback_token, uptimeMillis() + last_delay)
             }
             "->" in s && passage === lines_main -> {
-                val s_display = cEscape(s.substringBeforeLast("->").trimEnd())
+                val s_display = CScriptMachine.escape(s.substringBeforeLast("->").trimEnd())
                 val delay = calculateDelay(s_display)
 				val pos_block_new = lines_passages[s.substringAfterLast("->", "")]
 				if (pos_block_new != null) {
@@ -449,7 +449,7 @@ class MediaLines(
             else -> {
                 val delay = calculateDelay(s)
                 handler.postAtTime({
-                    displayLine(cEscape(s), delay)
+                    displayLine(CScriptMachine.escape(s), delay)
                     executor.execute { prepareNextLine(delay + wait_offset) }
                 }, callback_token, uptimeMillis() + last_delay)
             }

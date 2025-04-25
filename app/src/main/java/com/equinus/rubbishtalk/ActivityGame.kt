@@ -5,77 +5,22 @@ import android.content.Intent
 import android.os.Build.VERSION.SDK_INT
 import android.os.Bundle
 import android.os.Handler
-import android.view.GestureDetector
 import android.view.MotionEvent
-import android.view.ScaleGestureDetector
-import android.view.View
 import com.equinus.rubbishtalk.databinding.GameBinding
 import java.io.File
-import kotlin.math.absoluteValue
 import kotlin.random.Random
 
 class ActivityGame:Activity() {
     private lateinit var handler:Handler
 
     private lateinit var lytGame:GameBinding
-    private lateinit var scroller:GestureDetector
-    private lateinit var enlarger:ScaleGestureDetector
+    private lateinit var adjustor:ImageAdjustor
 
     private lateinit var lines:MediaLines
     private lateinit var images:MediaImages
     private lateinit var audios:MediaAudios
 
     private lateinit var dirMedia:String
-
-    companion object {
-        private const val SCROLL_DISTANCE = 300f
-    }
-
-    private class GestureListener(private val v:View)
-        :GestureDetector.SimpleOnGestureListener()
-    {
-        override fun onScroll(e1:MotionEvent, e2:MotionEvent, distanceX:Float, distanceY:Float):Boolean {
-            v.x -= distanceX
-            return true
-        }
-    }
-
-    private class ScaleListener(private val v:View)
-        :ScaleGestureDetector.SimpleOnScaleGestureListener()
-    {
-        override fun onScale(detector:ScaleGestureDetector):Boolean {
-            val scale1 = v.scaleX
-            val scale2R = detector.scaleFactor
-
-            val scale:Float
-            val scale2:Float
-            if (scale1 * scale2R < 1) {
-                scale = 1f
-                scale2 = 1 / scale1
-            }
-            else if (scale1 * scale2R > 5) {
-                scale = 5f
-                scale2 = 5 / scale1
-            }
-            else {
-                scale = scale1 * scale2R
-                scale2 = scale2R
-            }
-
-            val w1 = (scale1 - 1).absoluteValue
-            val w2 = (scale2 - 1).absoluteValue
-            val den = w1 + w2
-
-            if (den > 0) {
-                v.pivotX = (v.pivotX * w1 + detector.focusX * w2) / den
-                v.pivotY = (v.pivotY * w1 + detector.focusY * w2) / den
-                v.scaleX = scale
-                v.scaleY = scale
-                return true
-            }
-            else return false
-        }
-    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -124,8 +69,17 @@ class ActivityGame:Activity() {
             lytGame.viewMainVideo,
             this)
 
-        scroller = GestureDetector(this, GestureListener(lytGame.root))
-        enlarger = ScaleGestureDetector(this, ScaleListener(lytGame.root))
+        adjustor = ImageAdjustor(
+            this,
+            width,
+            height,
+            lytGame.root,
+            images::prevMedia,
+            images::nextMedia)
+        {
+            images.pause()
+            images.resume()
+        }
 
         lines = MediaLines(
             width,
@@ -167,35 +121,8 @@ class ActivityGame:Activity() {
         audios.resume()
     }
 
-    override fun onTouchEvent(event:MotionEvent):Boolean {
-        val b = enlarger.onTouchEvent(event)
-        if (enlarger.isInProgress) {
-            images.pause()
-            images.resume()
-            return b
-        }
-
-        if (event.action == MotionEvent.ACTION_UP) {
-            val x = lytGame.root.x
-            if (x < -SCROLL_DISTANCE) {
-                lytGame.root.x = 0f
-                images.nextMedia()
-            }
-            else if (x > SCROLL_DISTANCE) {
-                lytGame.root.x = 0f
-                images.prevMedia()
-            }
-            else lytGame.root.animate().x(0f)
-        }
-
-        if (scroller.onTouchEvent(event)) {
-            images.pause()
-            images.resume()
-            return true
-        }
-
-        return super.onTouchEvent(event)
-    }
+    override fun onTouchEvent(event:MotionEvent) =
+        adjustor.onTouchEvent(event) || super.onTouchEvent(event)
 
     private fun relToAbsPath(base:String, path:String):String {
         val p = path.trimStart()

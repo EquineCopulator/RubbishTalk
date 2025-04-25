@@ -1,38 +1,6 @@
 package com.equinus.rubbishtalk
 
-fun cEscape(s:String):String {
-    return Regex("""\\(?:([abefnrtv\\'"?])|([0-7]{1,3})|x([A-Fa-f0-9]+)|u([A-Fa-f0-9]{4})|U([A-Fa-f0-9]{8})|)""").replace(s) {
-        when {
-            it.groups[1] != null -> when(it.groups[1]!!.value) {
-				"a" -> "\u0007"
-				"b" -> "\u0008"
-				"e" -> "\u001B"
-				"f" -> "\u000C"
-				"n" -> "\u000A"
-				"r" -> "\u000D"
-				"t" -> "\u0009"
-				"v" -> "\u000B"
-				else -> it.groups[1]!!.value
-			}
-            it.groups[2] != null -> {
-                it.groups[2]!!.value.toInt(8).toChar().toString()
-            }
-            it.groups[3] != null -> {
-                it.groups[3]!!.value.toInt(16).toChar().toString()
-            }
-            it.groups[4] != null -> {
-                it.groups[4]!!.value.toInt(16).toChar().toString()
-            }
-            it.groups[5] != null -> {
-                val c = it.groups[5]!!.value.toInt(16)
-                "%c".format(c)
-            }
-            else -> ""
-        }
-    }
-}
-
-class CScriptVirtualMachine {
+class CScriptMachine {
     companion object {
         private val regex_id = Regex("""(?!\d)\w+""")
         private val regex_num8 = Regex("""0\d+""")
@@ -56,6 +24,38 @@ class CScriptVirtualMachine {
             "," to 18)
         private val bracket = mapOf("(L" to ")", "(" to ")", "?" to ":", "[" to "]")
         private val right = mapOf("++" to true, "--" to true, ")" to true, ">" to true, "]" to true)
+
+        fun escape(s:String):String {
+            return Regex("""\\(?:([abefnrtv\\'"?])|([0-7]{1,3})|x([A-Fa-f0-9]+)|u([A-Fa-f0-9]{4})|U([A-Fa-f0-9]{8})|)""").replace(s) {
+                when {
+                    it.groups[1] != null -> when(it.groups[1]!!.value) {
+                        "a" -> "\u0007"
+                        "b" -> "\u0008"
+                        "e" -> "\u001B"
+                        "f" -> "\u000C"
+                        "n" -> "\u000A"
+                        "r" -> "\u000D"
+                        "t" -> "\u0009"
+                        "v" -> "\u000B"
+                        else -> it.groups[1]!!.value
+                    }
+                    it.groups[2] != null -> {
+                        it.groups[2]!!.value.toInt(8).toChar().toString()
+                    }
+                    it.groups[3] != null -> {
+                        it.groups[3]!!.value.toInt(16).toChar().toString()
+                    }
+                    it.groups[4] != null -> {
+                        it.groups[4]!!.value.toInt(16).toChar().toString()
+                    }
+                    it.groups[5] != null -> {
+                        val c = it.groups[5]!!.value.toInt(16)
+                        "%c".format(c)
+                    }
+                    else -> ""
+                }
+            }
+        }
     }
 
     sealed class BadScriptException(s:String):Exception(s)
@@ -66,7 +66,8 @@ class CScriptVirtualMachine {
     class TypeError(val s_value:String, val s_type:String):BadScriptException("")
 
     val mem = mutableMapOf<String, Any>()
-    val func = mutableMapOf<String, (List<Any>)->Any>("ifdef" to ::IfDef, "undef" to ::Undef, "reset" to ::Reset, "str" to ::Str)
+    val func = mutableMapOf<String, (List<Any>)->Any>(
+        "ifdef" to ::IfDef, "undef" to ::Undef, "reset" to ::Reset, "str" to ::Str)
 
     private inline fun<reified T> CValue(v:Any):T {
         val vv = v as? Pair<*, *>
@@ -164,7 +165,7 @@ class CScriptVirtualMachine {
         val a3 = s.substring(r3).trim()
         when (operator) {
             "(L" -> return Eval(a2)
-            "\"L" -> return cEscape(a2)
+            "\"L" -> return escape(a2)
             "(" -> return FuncCall(a1, a2)
             "[" -> {
                 val address = (CValue<Int>(Eval(a1)) + CValue<Int>(Eval(a2))).toString()

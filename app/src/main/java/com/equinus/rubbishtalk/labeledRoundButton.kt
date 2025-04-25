@@ -7,14 +7,23 @@ import android.util.TypedValue
 
 class LabeledRoundButton:RelativeLayout {
     constructor(context:Context):super(context) {
-        val diameter = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 100f, context.resources.displayMetrics).toInt()
+        val diameter = TypedValue
+            .applyDimension(TypedValue.COMPLEX_UNIT_DIP, 100f, context.resources.displayMetrics)
+            .toInt()
         layoutParams = MarginLayoutParams(diameter, diameter).apply {
-            marginEnd = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 20f, context.resources.displayMetrics).toInt()
+            marginEnd = TypedValue
+                .applyDimension(TypedValue.COMPLEX_UNIT_DIP, 20f, context.resources.displayMetrics)
+                .toInt()
         }
     }
-    constructor(constext:Context, attr:AttributeSet?):super(constext, attr) { if (attr != null) applyAttr(attr) }
+    constructor(constext:Context, attr:AttributeSet?):super(constext, attr) {
+        if (attr != null) applyAttr(attr)
+    }
     constructor(constext:Context, attr:AttributeSet?, defStyleAttr:Int)
-            :super(constext, attr, defStyleAttr) { if (attr != null) applyAttr(attr) }
+            :super(constext, attr, defStyleAttr)
+    {
+        if (attr != null) applyAttr(attr)
+    }
 
     var color:Int
         get() { return 0 }
@@ -24,7 +33,10 @@ class LabeledRoundButton:RelativeLayout {
         set(value) {
             tv.text = value
             val count = text.count { c:Char->c.isLetterOrDigit() }
-            tv.textSize = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, if (count < 4) 25f else 80f / count, context.resources.displayMetrics)
+            tv.textSize = TypedValue
+                .applyDimension(TypedValue.COMPLEX_UNIT_SP, if (count < 4)
+                    25f
+                else 80f / count, context.resources.displayMetrics)
         }
     fun setCircleOnClickListener(r:(android.view.View)->Unit) {
         iv.setOnClickListener(r)
@@ -38,7 +50,8 @@ class LabeledRoundButton:RelativeLayout {
         iv.colorFilter = ToFilter(-1)
         iv.setImageDrawable(if (android.os.Build.VERSION.SDK_INT >= 21)
             context.resources.getDrawable(R.drawable.draw_redcirclebutton, null)
-        else @Suppress("DEPRECATION") context.resources.getDrawable(R.drawable.draw_redcirclebutton))
+        else
+            @Suppress("DEPRECATION") context.resources.getDrawable(R.drawable.draw_redcirclebutton))
         iv.layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT)
     }
     private val tv = TextView(context)
