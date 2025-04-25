@@ -60,25 +60,29 @@ class ActivityGame:Activity() {
             Random.Default,
             lytGame.viewMain,
             lytGame.relaMain)
-        audios = MediaAudios(
+        audios = object:MediaAudios(
             width,
             height,
             handler,
             Random.Default,
-            ::exit,
             lytGame.viewMainVideo,
-            this)
+            this@ActivityGame)
+        {
+            override fun errmsg(str:String?) = exit(str)
+        }
 
-        adjustor = ImageAdjustor(
-            this,
+        adjustor = object:ImageAdjustor(
+            this@ActivityGame,
             width,
             height,
-            lytGame.root,
-            images::prevMedia,
-            images::nextMedia)
+            lytGame.root)
         {
-            images.pause()
-            images.resume()
+            override fun prev() = images.prevMedia()
+            override fun next() = images.nextMedia()
+            override fun retime() {
+                images.pause()
+                images.resume()
+            }
         }
 
         lines = MediaLines(

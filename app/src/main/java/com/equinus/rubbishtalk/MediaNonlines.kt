@@ -4,7 +4,7 @@ import java.io.File
 
 sealed class MediaNonlines(
     protected val handler:android.os.Handler,
-    protected val random:kotlin.random.Random)
+    private val random:kotlin.random.Random)
 {
     abstract fun pause()
     abstract fun resume()
@@ -195,15 +195,16 @@ class MediaImages(
     }
 }
 
-class MediaAudios(
+abstract class MediaAudios(
     private val width:Int,
     private val height:Int,
     handler:android.os.Handler,
     random:kotlin.random.Random,
-    private val errmsg:(String?)->Unit,
     private val vVideo:android.view.SurfaceView,
     context:android.content.Context): MediaNonlines(handler, random)
 {
+    protected abstract fun errmsg(str:String?)
+
     override fun pause() {
         if (player.isPlaying) {
             paused = true

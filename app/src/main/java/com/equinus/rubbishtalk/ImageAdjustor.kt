@@ -5,15 +5,16 @@ import android.view.MotionEvent
 import android.view.ScaleGestureDetector
 import android.view.View
 
-class ImageAdjustor(
+abstract class ImageAdjustor(
     context:android.content.Context,
     width:Int,
     height:Int,
-    private val view:View,
-    private val prev:()->Unit,
-    private val next:()->Unit,
-    private val retime:()->Unit)
+    private val view:View)
 {
+    protected abstract fun prev()
+    protected abstract fun next()
+    protected abstract fun retime()
+
     private val semiWidth = width.toFloat() / 2
     private val semiHeight = height.toFloat() / 2
 
@@ -54,42 +55,42 @@ class ImageAdjustor(
     {
         override fun onScale(detector:ScaleGestureDetector):Boolean {
             val scale1 = v.scaleX
-			val scale2:Float
-			val scaleNew:Float
-			
-			val scaleNewTry = scale1 * detector.scaleFactor
-			if (scaleNewTry < 1) {
-				scale2 = 1 / scale1
-				scaleNew = 1f
-			}
-			else if (scaleNewTry > 5) {
-				scale2 = 5 / scale1
-				scaleNew = 5f
-			} 
-			else {
-				scale2 = detector.scaleFactor
-				scaleNew = scaleNewTry
-			}
-			
+            val scale2:Float
+            val scaleNew:Float
+            
+            val scaleNewTry = scale1 * detector.scaleFactor
+            if (scaleNewTry < 1) {
+                scale2 = 1 / scale1
+                scaleNew = 1f
+            }
+            else if (scaleNewTry > 5) {
+                scale2 = 5 / scale1
+                scaleNew = 5f
+            } 
+            else {
+                scale2 = detector.scaleFactor
+                scaleNew = scaleNewTry
+            }
+            
             v.scaleX = scaleNew
             v.scaleY = scaleNew
-			
-			val x = scale2 * v.x + (1 - scale2) * (detector.focusX - semiWidth)
-			val y = scale2 * v.y + (1 - scale2) * (detector.focusY - semiHeight)
+            
+            val x = scale2 * v.x + (1 - scale2) * (detector.focusX - semiWidth)
+            val y = scale2 * v.y + (1 - scale2) * (detector.focusY - semiHeight)
 
             val sc = scaleNew - 1
             val w = semiWidth * sc
             val h = semiHeight * sc
-			
-			v.x =
-				if (x > w) w
-				else if (x < -w) -w
-				else x
-			v.y =
-				if (y > h) h
-				else if (y < -h) -h
-				else y
-			
+            
+            v.x =
+                if (x > w) w
+                else if (x < -w) -w
+                else x
+            v.y =
+                if (y > h) h
+                else if (y < -h) -h
+                else y
+            
             return true
         }
     }
