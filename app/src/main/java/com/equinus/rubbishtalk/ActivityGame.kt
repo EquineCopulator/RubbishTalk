@@ -133,7 +133,7 @@ class ActivityGame:Activity() {
         if (!p.startsWith("." + File.separator))
             if (!p.startsWith(".." + File.separator))
                 return p
-        return base + "." + File.separator + p
+        return base + File.separator + p
     }
 
     private fun requestPerm() {
