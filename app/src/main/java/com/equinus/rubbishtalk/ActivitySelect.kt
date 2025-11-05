@@ -36,6 +36,7 @@ class ActivitySelect:android.app.Activity() {
     private var dirMedia:String? = null
     private var textSpeed = -1L
     private var imageSpeed = -1L
+    private var autoInclude = false
 
     private var reqPerm = READ_EXTERNAL_STORAGE
     private var reqCode = 0
@@ -197,15 +198,18 @@ class ActivitySelect:android.app.Activity() {
                 textSpeed = if (!lines.hasNext()) -1L
                 else {
                     val r = lines.next().toLongOrNull() ?: -1L
-                    if (r >= 100) r
-                    else -1L
+                    if (r >= 100) r else -1L
                 }
 
                 imageSpeed = if (!lines.hasNext()) -1L
                 else {
                     val r = lines.next().toLongOrNull() ?: -1L
-                    if (r >= 0) r
-                    else -1L
+                    if (r >= 0) r else -1L
+                }
+
+                autoInclude = if (!lines.hasNext()) false else {
+                    val r = lines.next().trim()
+                    r.isNotEmpty() && r != "false"
                 }
             }
             return false
@@ -214,6 +218,7 @@ class ActivitySelect:android.app.Activity() {
             dirMedia = null
             textSpeed = -1L
             imageSpeed = -1L
+            autoInclude = false
             return fSetting.exists()
         }
     }
@@ -239,6 +244,7 @@ class ActivitySelect:android.app.Activity() {
         else lytOption.etTextspeed.setText(textSpeed.toString())
         if (imageSpeed < 0) lytOption.etImagespeed.text.clear()
         else lytOption.etImagespeed.setText(imageSpeed.toString())
+        lytOption.cbInclude.setChecked(autoInclude)
 
         dlgOption.show()
     }
@@ -366,7 +372,11 @@ class ActivitySelect:android.app.Activity() {
         var imageSpeed = lytOption.etImagespeed.text.toString().toLongOrNull() ?: -1L
         if (imageSpeed < 0) imageSpeed = IMAGE_SPEED_DEFAULT
 
-        fSetting.writeText("${ lytOption.etDir.text }\n$textSpeed\n$imageSpeed")
+        fSetting.writeText("${
+            lytOption.etDir.text
+        }\n$textSpeed\n$imageSpeed\n${
+            lytOption.cbInclude.isChecked
+        }")
     }
 
     private fun deleteGame() {
@@ -384,7 +394,8 @@ class ActivitySelect:android.app.Activity() {
         startActivityForResult(Intent(this, ActivityGame::class.java)
             .putExtra(SharedConst.EXTRA_DIR_MEDIA, dirMedia)
             .putExtra(SharedConst.EXTRA_TEXT_SPEED, textSpeed)
-            .putExtra(SharedConst.EXTRA_IMAGE_SPEED, imageSpeed), ACT_START)
+            .putExtra(SharedConst.EXTRA_IMAGE_SPEED, imageSpeed)
+            .putExtra(SharedConst.EXTRA_AUTO_INCLUDE, autoInclude), ACT_START)
     }
 
     private fun showHelp() =

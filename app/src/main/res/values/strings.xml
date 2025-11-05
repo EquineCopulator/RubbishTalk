@@ -18,6 +18,7 @@
     <string name="tv_option_name">Game name:</string>
     <string name="tv_option_dir">Path for the media files:</string>
     <string name="tv_option_dir_browse">Tap to Browse…</string>
+    <string name="tv_option_auto_include">Auto-include</string>
     <string name="tv_option_textspeed">Text display time (milliseconds per character >= 100):</string>
     <string name="tv_option_imagespeed">Image display time (milliseconds, 0 to disable auto change):</string>
 

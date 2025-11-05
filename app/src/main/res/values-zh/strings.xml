@@ -15,6 +15,7 @@
     <string name="tv_option_name">游戏名称：</string>
     <string name="tv_option_dir">媒体文件目录：</string>
     <string name="tv_option_dir_browse">打开……</string>
+    <string name="tv_option_auto_include">自动include</string>
     <string name="tv_option_textspeed">文字显示时间（毫秒每字，>=100）：</string>
     <string name="tv_option_imagespeed">图像显示时间（毫秒，0代表永久）：</string>
 

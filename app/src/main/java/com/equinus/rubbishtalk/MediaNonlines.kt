@@ -1,6 +1,7 @@
 package com.equinus.rubbishtalk
 
 import java.io.File
+import kotlin.collections.filter
 
 sealed class MediaNonlines(
     protected val handler:android.os.Handler,
@@ -94,7 +95,7 @@ sealed class MediaNonlines(
         return LOADFILE_OK
     }
 
-    fun isEmpty() = files[""]?.isNotEmpty() != true
+    fun isEmpty() = files.values.all { it.isEmpty() }
 
     fun nextMedia() {
         handler.removeCallbacks(runnableChooseMedia)
@@ -116,6 +117,10 @@ sealed class MediaNonlines(
             decideNextImage()
         }
     }
+
+    fun topics() = files.asSequence().filter {
+        it.value.isNotEmpty()
+    }.map { it.key }.toSet()
 
     private fun ChooseMedia() {
         if (files_topic.isNotEmpty()) {

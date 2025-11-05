@@ -51,6 +51,7 @@ class ActivityGame:Activity() {
         if (textSpeed < 0) throw NullPointerException()
         val imageSpeed = i.getLongExtra(SharedConst.EXTRA_IMAGE_SPEED, -1L)
         if (imageSpeed < 0) throw NullPointerException()
+        val autoInclude = i.getBooleanExtra(SharedConst.EXTRA_AUTO_INCLUDE, false)
 
         images = MediaImages(
             width,
@@ -103,7 +104,7 @@ class ActivityGame:Activity() {
         if (!File(dirMedia).exists())
             return exit(getString(R.string.merr_nonexist, dirMedia))
 
-        loadMedia()
+        loadMedia(autoInclude)
     }
 
     override fun onDestroy() {
@@ -141,7 +142,7 @@ class ActivityGame:Activity() {
         finish()
     }
 
-    private fun loadMedia() {
+    private fun loadMedia(autoInclude:Boolean) {
         var ret = images.loadMedia(dirMedia, null)
         if (ret == MediaNonlines.LOADFILE_DENIED)
             return requestPerm()
@@ -174,15 +175,37 @@ class ActivityGame:Activity() {
             }
         }
         else if (fInclude.exists()) return requestPerm()
+        else if (autoInclude) {
+            for (subdir in File(dirMedia).listFiles{
+                it.isDirectory
+            }.orEmpty()) {
+                ret = images.loadMedia(subdir.absolutePath, subdir.name)
+                if (ret == MediaNonlines.LOADFILE_DENIED)
+                    return requestPerm()
 
-        if (lines.init()) lines.start()
-        else if (images.isEmpty() && audios.isEmpty())
-            exit(getString(R.string.merr_nomedia))
+                ret = audios.loadMedia(subdir.absolutePath, subdir.name)
+                if (ret == MediaNonlines.LOADFILE_DENIED)
+                    return requestPerm()
+            }
+        }
 
-        setContentView(lytGame.root)
+        if (lines.init()) {
+            lines.start()
 
-        images.topic = ""
-        audios.topic = ""
+            setContentView(lytGame.root)
+
+            images.topic = ""
+            audios.topic = ""
+        }
+        else {
+            val t = (images.topics() + audios.topics()).randomOrNull() ?:
+                return exit(getString(R.string.merr_nomedia))
+
+            setContentView(lytGame.root)
+
+            images.topic = t
+            audios.topic = t
+        }
     }
 
     private fun exit(msg:String?) {
